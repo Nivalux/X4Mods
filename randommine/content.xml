@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content id="ws_2924729055" name="RandomMineDelta" description="Will randomly mine for player stations. If none is requesting, then it will mine first and try to sell it later." version="100" save="0" author="Faryu" date="2023-01-28" sync="false" lastupdate="1674903762">
+  <dependency version="250"/>
+</content>

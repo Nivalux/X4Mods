@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SectorDefense Ai, Created by Language. Version 122-->
+<aiscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="sectordefense" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="100">
+  <order id="SectorDefense" name="SectorDefense" description="Sector defense logic." category="combat" infinite="true">
+    <params>
+      <param name="sector" default="this.sector" type="sector" text="Sector" comment="Defend Sector" required="true" />
+      <param name="attackUnknown" type="bool" default="false" text="Attack undiscovered targets" comment="Attack targets unknown to the player?"/>
+      <param name="attackStation" type="bool" default="false" text="Attack stations" comment="Attack stations?"/>
+      <param name="attackShip" type="bool" default="true" text="Attack any kind of ship" comment="Attack any kind of ship?"/>
+      <param name="attackShipXS" type="bool" default="false" text="Attack ship size XS"/>
+      <param name="attackShipS" type="bool" default="false" text="Attack ship size S"/>
+      <param name="attackShipM" type="bool" default="false" text="Attack ship size M"/>
+      <param name="attackShipL" type="bool" default="false" text="Attack ship size L"/>
+      <param name="attackShipXL" type="bool" default="false" text="Attack ship size XL"/>
+    </params>
+    <skill min="10"/>
+    <requires primarypurpose="purpose.fight"/>
+  </order>
+
+  <interrupts>
+    <handler ref="SectorChangeHandler"/>
+    <handler ref="AttackHandler"/>
+    <handler ref="MissileLockHandler"/>
+    <handler ref="ScannedHandler"/>
+    <handler ref="InspectedHandler"/>
+    <handler ref="FoundAbandonedHandler"/>
+    <handler ref="ResupplyHandler"/>
+    <handler ref="JobRemoveRequestHandler"/>
+    <handler ref="TargetInvalidHandler"/>
+  </interrupts>
+
+  <init>
+    <substitute_text text="$debugFileName" source="''+this.ship.idcode">
+      <replace string="'('" with="''"/>
+      <replace string="')'" with="''"/>
+    </substitute_text>
+    <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'Starting Log File Version: 100'" append="false"/>
+    
+    <set_order_syncpoint_reached order="this.ship.order"/>
+
+    <set_command_action commandaction="commandaction.searchingtrades"/>
+    
+  </init>
+
+  <attention min="unknown">
+    <actions>
+      <do_if value="$sector" negate="true">
+        <resume label="finish" />
+      </do_if>
+
+      <create_list name="$targetClasses"/>
+      <do_if value="$attackStation">
+        <append_to_list name="$targetClasses" exact="class.station"/>
+      </do_if>
+      <do_if value="$attackShip">
+        <append_to_list name="$targetClasses" exact="class.ship"/>
+      </do_if>
+      <do_if value="$attackShipXS">
+        <append_to_list name="$targetClasses" exact="class.ship_xs"/>
+      </do_if>
+      <do_if value="$attackShipS">
+        <append_to_list name="$targetClasses" exact="class.ship_s"/>
+      </do_if>
+      <do_if value="$attackShipM">
+        <append_to_list name="$targetClasses" exact="class.ship_m"/>
+      </do_if>
+      <do_if value="$attackShipL">
+        <append_to_list name="$targetClasses" exact="class.ship_l"/>
+      </do_if>
+      <do_if value="$attackShipXL">
+        <append_to_list name="$targetClasses" exact="class.ship_xl"/>
+      </do_if>
+
+      <do_if value="$targetClasses.count" negate="true">
+        <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'No target classes selected.'"/>
+        <resume label="finish" />
+      </do_if>
+
+      <set_value name="$stepNr" exact="0" />
+
+      <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'Searching known targets...'"/>
+      <find_object groupname="$shipsToScan" multiple="true" space="$sector" sortbydistanceto="this.ship">
+        <match trueowner="faction.player" negate="true"/>
+        <match class="$targetClasses"/>
+        <match known="true"/>
+        <match mayattack="this.ship"/>
+      </find_object>
+
+      <do_if value="$shipsToScan.count">
+        <resume label="attack"/>
+      </do_if>
+
+      <do_if value="$attackUnknown">
+        <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'Searching unknown targets...'"/>
+        <find_object groupname="$shipsToScan" multiple="true" space="$sector" sortbydistanceto="this.ship">
+          <match trueowner="faction.player" negate="true"/>
+          <match class="$targetClasses"/>
+          <match known="false"/>
+          <match mayattack="this.ship"/>
+        </find_object>
+      </do_if>
+
+      <label name="attack"/>
+      <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'stepNr: ' + $stepNr"/>
+      <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'found foreign ships: ' + $shipsToScan.count"/>
+      <!--<do_for_each name="$scannedEntity" in="$shipsToScan">
+        <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="$scannedEntity.idcode + ' ' + $scannedEntity.name + ' known: ' + $scannedEntity.known + ' owner: ' + $scannedEntity.owner + ' trueowner: ' + $scannedEntity.trueowner + ' order: ' + $scannedEntity.order.id"/>
+        <do_if value="$scannedEntity.order.id == 'Attack'">
+          <wait min="1ms" max="200ms" comment="Avoid performance peaks with find functions" />
+          <find_object name="$possibleVictim" class="class.destructible" space="$sector" owner="this.owner">
+            <match_distance max="$scannedEntity.maxcombatrange.all" object="$scannedEntity"/>
+          </find_object>
+          <do_if value="$possibleVictim != null">
+            <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'Possible victims near attacker: ' + $possibleVictim.idcode"/>
+          </do_if>
+          <do_else>
+            <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'No victims near attacker'"/>
+          </do_else>
+        </do_if>
+      </do_for_each>-->
+      
+      <set_value name="$pursuedistance" exact="[this.ship.maxradarrange * 2, 50km].max"/>
+      <do_for_each name="$target" in="$shipsToScan">
+        <do_if value="$stepNr == 0">
+          <do_if value="$target.order.id == 'Attack'">
+            <wait min="1ms" max="200ms" comment="Avoid performance peaks with find functions" />
+            <find_object name="$possibleVictim" class="class.destructible" space="$sector" owner="this.owner">
+              <match_distance max="$target.maxcombatrange.all" object="$target"/>
+            </find_object>
+            <do_if value="$possibleVictim" negate="true">
+              <continue />
+            </do_if>
+          </do_if>
+          <do_else>
+            <continue />
+          </do_else>
+        </do_if>
+
+        <set_value name="$distance" exact="this.ship.distanceto.{$target}" />
+        <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'distance to target: ' + $distance"/>
+        <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'pursuedistance    : ' + $pursuedistance"/>
+        <do_if value="$distance gt $pursuedistance">
+          <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'Flying to target'"/>
+
+          <!-- Get this ship and primary enemy target -->
+          <create_position name="$thispos" object="this.ship" space="this.sector" />
+          <create_position name="$enemypos" object="$target" space="$target.sector" />
+
+          <do_if value="$target.sector != $sector">
+            <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'target left the sector.'"/>
+            <continue />
+          </do_if>
+
+          <!-- Rotation direction from enemy ship to this ship -->
+          <create_orientation name="$orientation" refposition="$thispos" orientation="look_at" >
+            <position value="$enemypos" />
+          </create_orientation>
+
+          <!-- The calculated position: from the vector (enemy->this) with the cylinder relative coordinates along it  -->
+          <transform_position refposition="$enemypos" refrotation="$orientation" name="$finalpos">
+            <position z="$pursuedistance * 0.75f" />
+          </transform_position>
+          
+          <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'  flyto pos: [' + $finalpos.x + ' ' + $finalpos.y + ' ' + $finalpos.z + ']'"/>
+          <create_order object="this.ship" id="'MoveWait'">
+            <param name="destination" value="[$sector, $finalpos]" />
+            <param name="recallsubordinates" value="true" />
+          </create_order>
+          
+          <remove_value name="$distfactor" />
+        </do_if>
+        <remove_value name="$distance" />
+
+        <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'Creating attack order...'"/>
+        <create_order object="this.ship" id="'Attack'">
+          <param name="primarytarget" value="$target" />
+          <!--<param name="secondarytargets" value="$shipsToScan" />-->
+          <param name="pursuetargets" value="false" />
+          <param name="pursuedistance" value="$pursuedistance" />
+          <param name="allowothertargets" value="false"/>
+        </create_order>
+
+        <remove_value name="$target" />
+        <resume label="end"/>
+      </do_for_each>
+
+      <set_value name="$stepNr" operation="add"/>
+      <do_if value="$stepNr lt 2">
+        <resume label="attack"/>
+      </do_if>
+
+      <label name="finish"/>
+      <wait min="20s" max="40s" />
+
+      <label name="end"/>
+      <remove_value name="$shipsToScan" />
+      <debug_to_file name="$debugFileName" directory="'SectorDefense'" text="'end'"/>
+    </actions>
+  </attention>
+</aiscript>

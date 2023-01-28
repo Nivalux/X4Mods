@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content id="ws_2924740102" name="RandomSupplyDelta" description="Will automaticaly transport wares to builders and player stations. Can also function as a trader between your stations and npc stations." version="100" save="0" author="Faryu" date="2023-01-28" sync="false" lastupdate="1674905832">
+  <dependency version="250"/>
+</content>
